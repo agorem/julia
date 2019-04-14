@@ -938,8 +938,34 @@ USE_BINARYBUILDER := 0
 endif
 
 # This is the set of projects that BinaryBuilder dependencies are hooked up for.
-BB_PROJECTS := OPENBLAS LLVM SUITESPARSE OPENLIBM GMP MBEDTLS LIBSSH2 MPFR CURL LIBGIT2 PCRE LIBUV UNWIND
-$(foreach proj,$(BB_PROJECTS),$(if $(USE_BINARYBUILDER_$(proj)),,$(eval USE_BINARYBUILDER_$(proj) := $(USE_BINARYBUILDER))))
+BB_PROJECTS := OPENBLAS LLVM SUITESPARSE OPENLIBM GMP MBEDTLS LIBSSH2 MPFR CURL LIBGIT2 PCRE LIBUV LIBUNWIND
+define SET_BB_DEFAULT
+# First, check to see if BB is disabled on a global setting
+ifneq ($$(USE_BINARYBUILDER),1)
+USE_BINARYBUILDER_$(1) := 0
+else
+# If it's not, check to see if it's disabled by a USE_SYSTEM_xxx flag
+ifneq ($$(USE_SYSTEM_$(1)),0)
+USE_BINARYBUILDER_$(1) := 0
+else
+USE_BINARYBUILDER_$(1) := 1
+endif
+endif
+endef
+$(foreach proj,$(BB_PROJECTS),$(eval $(call SET_BB_DEFAULT,$(proj))))
+
+# Some special restrictions on BB usage:
+ifneq ($(USE_SYSTEM_BLAS),0)
+# Since the names don't line up (`BLAS` vs. `OPENBLA`), manually gate:
+USE_BINARYBUILDER_OPENBLAS := 0
+# Disable BB SuiteSparse if we're using system BLAS
+USE_BINARYBUILDER_SUITESPARSE := 0
+endif
+
+ifneq ($(USE_SYSTEM_LIBM),0)
+# If we're using system libm, disable BB OpenLibm
+USE_BINARYBUILDER_OPENLIBM := 0
+endif
 
 # Use the Assertions build
 BINARYBUILDER_LLVM_ASSERTS := 0
